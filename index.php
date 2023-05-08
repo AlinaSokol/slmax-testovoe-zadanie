@@ -1,35 +1,6 @@
 <?php
-
-/*class Connection {
-    private $connection;
-    private $typeConnection;
-    private $address = "localhost";
-    private $database = "slmax";
-    private $username = "root";
-    private $password = "";
-    private $charset = 'utf8';
-    function __construct($type = 'PDO')
-    {
-        $this->typeConnection = $type;
-
-        if ($type === 'PDO') {
-            try {
-                $this->connection = new PDO("mysql:host=$this->address;dbname=$this->database;charset=$this->charset", $this->username, $this->password);
-                $this->connection->setAttribute (PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-            } catch (PDOException $e) {
-                echo "Ошибка: " . $e->getMessage();
-            }
-        }
-    }
-    public function getConnection()
-    {
-        return $this->connection;
-    }
-}*/
-
-require_once 'DataBase.php';
-require_once 'List.php';
+require_once 'classUser.php';
+require_once 'classUserLog.php';
 
 $address = "localhost";
 $database = "slmax";
@@ -37,36 +8,47 @@ $username = "root";
 $password = "";
 $charset = 'utf8';
 $pdo = new PDO("mysql:host=$address;dbname=$database;charset=$charset", $username, $password);
-$copy = null;
-if (empty($_POST)) {
-    $message = "Hello, slmax!";
-} else {
-    $user = new DataBase($pdo, $_POST);
-    $message = $user;
-    $copy = $user->formatting_userdata($user);
-    //$message = $user->first_userdata;
-}
-function getUserdata($pdo)
-{
-    $stmt = $pdo->query("SELECT * FROM users ORDER BY id");
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-/*$connection = new Connection();
-$pdo = $connection->getConnection();*/
-$users = getUserdata($pdo);
 
-if(isset($_GET['index'])) {
-    $user = new DataBase($pdo);
-    $del = $user->delete_user($_GET['index']);
-    if($del) {
-        header("Location: " . $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['SERVER_NAME'],true, 302);
+try {
+    if (empty($_POST)) {
+        $user = "Hello, slmax!";
     } else {
-        $message = "Ошибка удаления";
+        $user = new User($pdo, $_POST);
+        $copy = $user->formatting_userdata();
     }
+    function getUserdata($pdo)
+    {
+        $stmt = $pdo->query("SELECT * FROM users ORDER BY id");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    $users = getUserdata($pdo);
+
+    $user_list = new UserLog($pdo);
+    $list = $user_list->create_user_log();
+
+    if($_GET['index'] === 'deleteLog') {
+        if ($user_list->clear_user_log()) {
+            header("Location: " . $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['SERVER_NAME'],true, 302);
+        } else {
+            echo 'Error';
+        }
+    } elseif (isset($_GET['index'])) {
+        $user_deleted = new User($pdo);
+        $del = $user_deleted->delete_user($_GET['index']);
+        if($del) {
+            header("Location: " . $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['SERVER_NAME'],true, 302);
+        } else {
+            $message = "Ошибка удаления";
+        }
+    }
+} catch (Exception $exception) {
+    echo $exception->getMessage();
+} catch (InvalidArgumentException $exParam) {
+    echo $exParam->getMessage();
 }
-
-
 ?>
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -77,8 +59,8 @@ if(isset($_GET['index'])) {
     <title>slmax</title>
 </head>
 <body>
-<pre>Clone: <?php echo var_dump($copy); //$message; ?></pre>
-<pre><?php echo var_dump($message); //$message; ?></pre>
+<pre><?php var_dump($user); ?></pre>
+<pre>Copy: <?php var_dump($copy); ?></pre>
 <p>Write your data:</p>
 <form action="" method="post">
     <div>
@@ -112,9 +94,8 @@ if(isset($_GET['index'])) {
     <button type="submit">Submit id</button>
 </form>
 <table class="table caption-top table-striped table-hover table-responsive" border="2">
-    <caption>Content</caption>
+    <caption>In DB</caption>
     <thead>
-    <!--<th scope="col">Id</th>-->
     <th scope="col">Firstname</th>
     <th scope="col">Lastname</th>
     <th scope="col">Birthday</th>
@@ -126,7 +107,6 @@ if(isset($_GET['index'])) {
     <?php
     foreach ($users as $user) { ?>
         <tr>
-            <!--<td><?/*= $user['id']; */?></td>-->
             <td><?= $user['firstname']; ?></td>
             <td><?= $user['lastname']; ?></td>
             <td><?= $user['birthday']; ?></td>
@@ -136,6 +116,33 @@ if(isset($_GET['index'])) {
         </tr>
     <?php } ?>
     </tbody>
+
 </table>
+<hr/>
+<table class="table caption-top table-striped table-hover table-responsive" border="2">
+    <caption>User log</caption>
+    <thead>
+    <th scope="col">Firstname</th>
+    <th scope="col">Lastname</th>
+    <th scope="col">Birthday</th>
+    <th scope="col">gender</th>
+    <th scope="col">city</th>
+    </thead>
+    <tbody>
+    <?php
+    foreach ($list as $row) {?>
+        <tr>
+            <td><?= $row->getFirstname() ?></td>
+            <td><?= $row->getLastname() ?></td>
+            <td><?= $row->getBirthday() ?></td>
+            <td><?= $row->getGender() ?></td>
+            <td><?= $row->getCity() ?></td>
+        </tr>
+    <?php } ?>
+    </tbody>
+</table>
+<form action="" method="get">
+    <button  type="submit" ><a href="<?php echo '?index=deleteLog'; ?>">Delete log</a></button>
+</form>
 </body>
 </html>
