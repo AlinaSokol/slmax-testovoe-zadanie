@@ -9,6 +9,16 @@ class  User {
     protected $conn;
 
     public function __construct($pdo, $post = null) { //5. Конструктор класса либо создает человека в БД с заданной информацией, либо берет информацию из БД по id (предусмотреть валидацию данных);
+        foreach ($post as $key => $param) {
+            if ($key == 'firstname' || $key == 'lastname' || $key == 'city') {
+                preg_match_all('/^[a-zА-Я]{1,50}$/iu', $param, $word);
+                if (empty($word[0])) {
+                    return false;
+                }
+            } elseif ($key == 'gender' && !filter_var($param, FILTER_VALIDATE_INT)) {
+                return false;
+            }
+        }
         $this->conn = $pdo;
         $this->id = $post['id'];
         if ($post != null && $this->verify_param($post)) {
@@ -35,18 +45,11 @@ class  User {
         }
     }
 
-    public function valid_param ($param) {
-        if (strpos($param, '--') || strpos($param, ';') ) {
-            throw new InvalidArgumentException ('Enter correct parameters');
-        }
-    }
-
     public function formatting_userdata() { //6. Форматирование человека с преобразованием возраста и (или) пола (п.3 и п.4) в зависимости от параметров (возвращает новый экземпляр stdClass со всеми полями изначального класса).
         return (object)get_mangled_object_vars($this);
     }
 
     public function delete_user($id) { //2. Удаление человека из БД в соответствии с id объекта;
-        $this->valid_param($id);
         $query = "DELETE FROM `users` WHERE (`id` = :id)";
         $stmt = $this->conn->prepare($query);
         $stmt->execute(['id' => $id]);
@@ -54,39 +57,11 @@ class  User {
         if ($userdata->check == 0) { // подтверждение удаления данных пользователя в БД
             return true;
         } else {
-            //return false;
-            return $userdata;
+            return false;
         }
-
-    }
-
-    public function getFirstname()
-    {
-        return $this->firstname;
-    }
-
-    public function getLastname()
-    {
-        return $this->lastname;
-    }
-
-    public function getBirthday()
-    {
-        return $this->birthday;
-    }
-
-    public function getGender()
-    {
-        return $this->gender;
-    }
-
-    public function getCity()
-    {
-        return $this->city;
     }
 
     protected function user_validation($id) { //protected
-        $this->valid_param($id);
         $query = "SELECT COUNT(*) AS 'check' FROM users WHERE (`id` = :id)";
         $stmt = $this->conn->prepare($query);
         $stmt->execute(['id' => $id]);
@@ -105,11 +80,6 @@ class  User {
     }
 
     private function create_user() { //1. Сохранение полей экземпляра класса в БД;
-        $this->valid_param($this->firstname);
-        $this->valid_param($this->lastname);
-        $this->valid_param($this->birthday);
-        $this->valid_param($this->gender);
-        $this->valid_param($this->city);
         $query = "INSERT INTO `users`
             VALUES (NULL, :firstname, :lastname, :birthday, :gender, :city) ";
         $stmt = $this->conn->prepare($query);
@@ -129,7 +99,6 @@ class  User {
     }
 
     private function take_userdata_from_DB() {
-        $this->valid_param($this->id);
         $query = "SELECT * FROM users WHERE (id = ?)";
         $stmt = $this->conn->prepare($query);
         $stmt->execute([$this->id]);

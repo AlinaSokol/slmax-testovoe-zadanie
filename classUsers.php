@@ -29,7 +29,6 @@ class Users extends User{
             } elseif (strpos($index, 'value') !== false && strpos($index, $this->divided_index[1]) !== false) {
                 $param_group[$this->divided_index[1]][] = $item;
                 $parameters[] = implode(' ', $param_group[$this->divided_index[1]]);
-                //$this->divided_index = [];
             }
         }
         $search_parameters = implode(' AND ', $parameters);
